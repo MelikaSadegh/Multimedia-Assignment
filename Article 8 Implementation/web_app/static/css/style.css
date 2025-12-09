@@ -1,0 +1,193 @@
+:root {
+    --primary: #2c3e50;
+    --secondary: #3498db;
+    --success: #2ecc71;
+    --danger: #e74c3c;
+    --warning: #f39c12;
+    --light: #ecf0f1;
+    --dark: #34495e;
+}
+
+body {
+    font-family: 'Vazir', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* هدر */
+.header {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.header h1 {
+    color: var(--primary);
+    margin-bottom: 10px;
+}
+
+.header .lead {
+    color: var(--dark);
+    font-size: 1.2rem;
+}
+
+/* کارت‌ها */
+.card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.card-header {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 20px;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.card-body {
+    padding: 30px;
+}
+
+/* آپلود */
+.upload-area {
+    border: 3px dashed #ddd;
+    border-radius: 15px;
+    padding: 60px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: white;
+}
+
+.upload-area:hover {
+    border-color: var(--secondary);
+    background: #f8f9fa;
+}
+
+.upload-area i {
+    font-size: 60px;
+    color: var(--secondary);
+    margin-bottom: 20px;
+}
+
+/* نتایج */
+.result-card {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    margin-top: 20px;
+}
+
+.cancer-alert {
+    animation: pulse 2s infinite;
+    border-left: 5px solid var(--danger) !important;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+}
+
+/* دکمه‌ها */
+.btn {
+    border-radius: 10px;
+    padding: 12px 30px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: var(--secondary);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+}
+
+/* بارگذاری */
+.loading {
+    text-align: center;
+    padding: 40px;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid var(--secondary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* نمونه‌ها */
+.sample-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.sample-image {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+.sample-image:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* ریسک */
+.risk-badge {
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.risk-high { background: var(--danger); color: white; }
+.risk-medium { background: var(--warning); color: #333; }
+.risk-low { background: var(--success); color: white; }
+
+/* واکنش‌گرا */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .header {
+        padding: 20px;
+    }
+    
+    .card-body {
+        padding: 20px;
+    }
+}
