@@ -5,6 +5,7 @@ from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 import numpy as np
 from src.config import Config
+import timm  
 
 class PreNorm(nn.Module):
     """LayerNorm قبل از attention"""
@@ -189,37 +190,60 @@ class ViT(nn.Module):
 class SkinCancerClassifier:
     """کلاس جامع برای طبقه‌بندی سرطان پوست"""
     
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, use_paper_vit=True):
         self.config = config
-        self.model = ViT(config)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Using device: {self.device}")
+        
+        # انتخاب مدل
+        if use_paper_vit:
+            self.model = PaperViT(config)
+        else:
+            self.model = ViT(config)  # مدل قبلی
+        
         self.model.to(self.device)
         
-        # Loss function با وزن‌های کلاس
-        self.class_weights = self._calculate_class_weights()
-        self.criterion = nn.CrossEntropyLoss(
-            weight=torch.tensor(self.class_weights, device=self.device)
-        )
+        # Loss function
+        self.criterion = nn.CrossEntropyLoss()
         
-        print(f"Model initialized on {self.device}")
-        print(f"Total parameters: {sum(p.numel() for p in self.model.parameters()):,}")
-        print(f"Trainable parameters: {sum(p.numel() for p in self.model.parameters() if p.requires_grad):,}")
-    
+        print(f"✓ Model initialized")
+        print(f"  Device: {self.device}")
+        print(f"  Model type: {'PaperViT' if use_paper_vit else 'Custom ViT'}")
+        
     def _calculate_class_weights(self):
-        """محاسبه وزن‌های کلاس برای مقابله با عدم تعادل"""
-        # این وزن‌ها باید بر اساس توزیع واقعی داده‌ها محاسبه شوند
-        # در اینجا وزن‌های تقریبی از مقاله قرار داده‌ایم
-        weights = [
-            1.0,  # akiec
-            1.0,  # bcc
-            1.0,  # bkl
-            1.0,  # df
-            2.0,  # mel (مهم‌ترین)
-            0.5,  # nv (شایع‌ترین)
-            1.0   # vasc
-        ]
-        return weights
+        """محاسبه وزن‌های کلاس"""
+        # وزن‌های تقریبی از مقاله
+        weights = {
+            'akiec': 1.0,
+            'bcc': 1.0,
+            'bkl': 1.0,
+            'df': 1.0,
+            'mel': 2.0,  # مهم‌ترین - وزن بیشتر
+            'nv': 0.5,   # شایع‌ترین - وزن کمتر
+            'vasc': 1.0
+        }
+        
+        # تبدیل به لیست بر اساس ترتیب class_mapping
+        weight_list = []
+        for class_name, idx in self.config.class_mapping.items():
+            weight_list.append(weights.get(class_name, 1.0))
+        
+        return weight_list
+    def save_model(self, path):
+        """ذخیره مدل"""
+        torch.save({
+            'model_state_dict': self.model.state_dict(),
+            'config': self.config,
+            'model_type': 'PaperViT' if hasattr(self.model, 'vit') else 'CustomViT'
+        }, path)
+        print(f"✓ Model saved to {path}")
     
+    def load_model(self, path):
+        """بارگذاری مدل"""
+        checkpoint = torch.load(path, map_location=self.device)
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        print(f"✓ Model loaded from {path}")  
+   
     def get_optimizer(self, learning_rate=None):
         """ایجاد optimizer"""
         if learning_rate is None:
@@ -228,34 +252,110 @@ class SkinCancerClassifier:
         optimizer = torch.optim.AdamW(
             self.model.parameters(),
             lr=learning_rate,
-            weight_decay=self.config.weight_decay,
-            betas=(0.9, 0.999)
+            weight_decay=self.config.weight_decay
         )
         
         return optimizer
     
     def get_scheduler(self, optimizer):
         """ایجاد learning rate scheduler"""
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer,
-            T_0=10,
-            T_mult=1,
-            eta_min=self.config.learning_rate * 0.01
+            T_max=self.config.num_epochs,
+            eta_min=learning_rate * 0.01
+        )
+        return scheduler
+            
+    def unfreeze_model(self):
+        """آزاد کردن کل مدل برای fine-tuning"""
+        if hasattr(self.model, 'unfreeze_backbone'):
+            self.model.unfreeze_backbone()
+        
+        # همچنین head را هم trainable کنید
+        for param in self.model.head.parameters():
+            param.requires_grad = True
+        
+        print("✓ All model layers unfrozen for fine-tuning")
+
+class PaperViT(nn.Module):
+    """ViT دقیقاً مطابق مقاله با استفاده از مدل پیش‌آموزش‌دیده"""
+    
+    def __init__(self, config: Config):
+        super().__init__()
+        self.config = config
+        
+        # بارگذاری ViT پیش‌آموزش‌دیده از timm
+        # مقاله از ViT-Base/16 استفاده کرده است
+        try:
+            self.vit = timm.create_model(
+                'vit_base_patch16_224',
+                pretrained=True,
+                num_classes=0  # حذف head اصلی
+            )
+        except Exception as e:
+            print(f"Error loading pretrained ViT: {e}")
+            print("Creating ViT from scratch...")
+            # اگر دانلود نشد، از پایه بساز
+            self.vit = timm.create_model(
+                'vit_base_patch16_224',
+                pretrained=False,
+                num_classes=0
+            )
+        
+        # فریز کردن لایه‌های پایه (optional برای fine-tuning)
+        if hasattr(config, 'freeze_backbone') and config.freeze_backbone:
+            self._freeze_backbone()
+        
+        # اضافه کردن head جدید مطابق مقاله
+        num_features = 768  # برای ViT-Base
+        
+        # MLP Head مطابق مقاله - ساده‌تر برای جلوگیری از overfitting
+        self.head = nn.Sequential(
+            nn.LayerNorm(num_features),
+            nn.Linear(num_features, 512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(128, len(config.class_mapping))
         )
         
-        return scheduler
+        # Initialize head weights
+        self._init_head_weights()
+        
+        print(f"ViT Model Info:")
+        print(f"  Backbone: {'Frozen' if config.freeze_backbone else 'Trainable'}")
+        print(f"  Total params: {sum(p.numel() for p in self.parameters()):,}")
+        print(f"  Trainable params: {sum(p.numel() for p in self.parameters() if p.requires_grad):,}")
     
-    def save_model(self, path):
-        """ذخیره مدل"""
-        torch.save({
-            'model_state_dict': self.model.state_dict(),
-            'config': self.config,
-            'class_weights': self.class_weights
-        }, path)
-        print(f"Model saved to {path}")
+    def _freeze_backbone(self):
+        """فریز کردن لایه‌های backbone"""
+        for name, param in self.vit.named_parameters():
+            param.requires_grad = False
+        print("✓ ViT backbone frozen")
     
-    def load_model(self, path):
-        """بارگذاری مدل"""
-        checkpoint = torch.load(path, map_location=self.device)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        print(f"Model loaded from {path}")
+    def unfreeze_backbone(self):
+        """آزاد کردن لایه‌های backbone برای fine-tuning"""
+        for name, param in self.vit.named_parameters():
+            param.requires_grad = True
+        print("✓ ViT backbone unfrozen")
+    
+    def _init_head_weights(self):
+        """مقداردهی اولیه وزن‌های head"""
+        for m in self.head.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+    
+    def forward(self, x):
+        # Extract features from ViT
+        features = self.vit(x)
+        
+        # Classification head
+        output = self.head(features)
+        return output

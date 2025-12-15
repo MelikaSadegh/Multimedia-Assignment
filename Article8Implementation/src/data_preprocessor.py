@@ -1,3 +1,4 @@
+# data_preprocessor.py
 import os
 import numpy as np
 import pandas as pd
@@ -6,24 +7,27 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 import albumentations as A
-import yaml
 from tqdm import tqdm
 import warnings
 warnings.filterwarnings('ignore')
 
+# اضافه کردن این import
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.config import Config
+
 class DataPreprocessor:
-    def __init__(self, config_path='config.yaml'):
-        with open(config_path, 'r') as f:
-            self.config = yaml.safe_load(f)
-        
-        self.data_config = self.config['data']
-        self.aug_config = self.config['augmentation']
+    def __init__(self, config=None):
+        if config is None:
+            self.config = Config()
+        else:
+            self.config = config
         
         # ایجاد دایرکتوری‌ها
         self.create_directories()
         
         # مسیرهای فایل
-        self.raw_path = self.data_config['local_path']
+        self.raw_path = self.config.data_dir
         self.metadata_path = os.path.join(self.raw_path, 'HAM10000_metadata.csv')
         self.images_dir = os.path.join(self.raw_path, 'HAM10000_images')
         
@@ -49,7 +53,7 @@ class DataPreprocessor:
             print(f"Error: Metadata file not found at {self.metadata_path}")
             print("\nPlease download the dataset from:")
             print("https://www.kaggle.com/datasets/kmader/skin-cancer-mnist-ham10000")
-            print("\nAnd extract it to ./data/raw/")
+            print("\nAnd extract it to ./data/")
             return False
         
         # بررسی وجود پوشه تصاویر
@@ -60,6 +64,8 @@ class DataPreprocessor:
             alternative_paths = [
                 os.path.join(self.raw_path, 'images'),
                 os.path.join(self.raw_path, 'HAM10000'),
+                os.path.join(self.raw_path, 'HAM10000_images_part_1'),
+                os.path.join(self.raw_path, 'HAM10000_images_part_2'),
                 self.raw_path
             ]
             
@@ -178,16 +184,13 @@ class DataPreprocessor:
     def create_augmentation_pipeline(self):
         """ایجاد pipeline برای augmentation"""
         return A.Compose([
-            A.Rotate(limit=self.aug_config['rotation_range'], p=0.5),
-            A.HorizontalFlip(p=0.5 if self.aug_config['horizontal_flip'] else 0),
-            A.VerticalFlip(p=0.3 if self.aug_config['vertical_flip'] else 0),
+            A.Rotate(limit=self.config.rotation_range, p=0.5),
+            A.HorizontalFlip(p=0.5),
             A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.3),
             A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=20, val_shift_limit=10, p=0.3),
-            A.GaussNoise(var_limit=(10.0, 50.0), p=0.2),
-            A.CLAHE(clip_limit=2.0, tile_grid_size=(8, 8), p=0.2),
         ])
     
-    def augment_balance_classes(self, df, target_samples=980):  # Set to 980 as in article
+    def augment_balance_classes(self, df, target_samples=980):
         print("\nAugmenting and balancing classes...")
         augmentation_pipeline = self.create_augmentation_pipeline()
         grouped = df.groupby('dx')
@@ -229,7 +232,7 @@ class DataPreprocessor:
         
         balanced_df = pd.DataFrame(balanced_data)
         print(f"\nOriginal samples: {len(df)}")
-        print(f"Balanced samples: {len(balanced_df)} (980 per class)")
+        print(f"Balanced samples: {len(balanced_df)} ({target_samples} per class)")
         return balanced_df
     
     def prepare_train_val_test_split(self, df, test_size=0.2, val_size=0.1):
@@ -318,7 +321,8 @@ def main():
     mapping_df.to_csv('./data/processed/class_mapping.csv', index=False)
     
     # Augment کردن و متوازن کردن کلاس‌ها
-    balanced_df = preprocessor.augment_balance_classes(df, target_samples=500)  # کاهش برای تست سریع
+    # برای تست سریع، target_samples را کم کنید
+    balanced_df = preprocessor.augment_balance_classes(df, target_samples=200)  # کاهش برای تست سریع
     
     # ایجاد splits
     train_df, val_df, test_df = preprocessor.prepare_train_val_test_split(

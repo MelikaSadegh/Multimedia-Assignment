@@ -9,16 +9,17 @@ from pathlib import Path
 import warnings
 warnings.filterwarnings('ignore')
 
-from src.config import Config
-from src.vit_model import SkinCancerClassifier
-
 class Trainer:
     """کلاس آموزش مدل"""
     
-    def __init__(self, config: Config):
+    def __init__(self, config):
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        # ایجاد classifier
+        from src.model import SkinCancerClassifier
         self.classifier = SkinCancerClassifier(config)
+        
         self.history = {
             'train_loss': [], 'train_acc': [], 'train_f1': [],
             'val_loss': [], 'val_acc': [], 'val_f1': [],
@@ -115,12 +116,13 @@ class Trainer:
         
         best_val_acc = 0
         patience_counter = 0
-        patience = 10
+        patience = 7
         
         print(f"\nStarting training for {num_epochs} epochs...")
         print(f"Device: {self.device}")
         print(f"Training samples: {len(train_loader.dataset)}")
         print(f"Validation samples: {len(val_loader.dataset)}")
+        print(f"Model type: {self.config.model_type}")
         
         for epoch in range(num_epochs):
             print(f"\n{'='*50}")
@@ -138,7 +140,7 @@ class Trainer:
             )
             
             # به‌روزرسانی scheduler
-            scheduler.step()
+            scheduler.step(val_loss)
             
             # ذخیره تاریخچه
             self.history['train_loss'].append(train_loss)
@@ -161,7 +163,7 @@ class Trainer:
                 patience_counter = 0
                 
                 # ذخیره مدل
-                model_path = Path(self.config.model_save_dir) / f"best_model_epoch_{epoch+1}_acc_{val_acc:.4f}.pth"
+                model_path = Path(self.config.model_save_dir) / f"best_model.pth"
                 self.classifier.save_model(str(model_path))
                 print(f"✓ New best model saved! (Accuracy: {val_acc:.4f})")
             else:
@@ -247,43 +249,51 @@ class Trainer:
         plt.savefig(plot_path, dpi=150, bbox_inches='tight')
         plt.close()
         
-        print(f"Training plots saved to {plot_path}")
+        print(f"✓ Training plots saved to {plot_path}")
     
-    def fine_tune(self, train_loader, val_loader, fine_tune_epochs=10):
-        """Fine-tuning مدل"""
-        print("\n" + "="*50)
-        print("Starting Fine-tuning")
-        print("="*50)
+    def evaluate(self, test_loader):
+        """ارزیابی روی تست ست"""
+        self.classifier.model.eval()
         
-        # آزاد کردن همه لایه‌ها
-        self.classifier.model.unfreeze_backbone()
+        all_preds = []
+        all_labels = []
+        all_probs = []
         
-        # Optimizer با learning rate کمتر
-        fine_tune_lr = self.config.learning_rate * 0.1
-        optimizer = torch.optim.AdamW(
-            self.classifier.model.parameters(),
-            lr=fine_tune_lr,
-            weight_decay=self.config.weight_decay * 0.1
-        )
+        with torch.no_grad():
+            pbar = tqdm(test_loader, desc='Testing')
+            for images, labels in pbar:
+                images, labels = images.to(self.device), labels.to(self.device)
+                
+                outputs = self.classifier.model(images)
+                probs = torch.softmax(outputs, dim=1)
+                _, preds = torch.max(outputs, 1)
+                
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
+                all_probs.extend(probs.cpu().numpy())
         
-        criterion = self.classifier.criterion
+        # محاسبه متریک‌ها
+        from sklearn.metrics import classification_report, confusion_matrix
         
-        for epoch in range(fine_tune_epochs):
-            print(f"\nFine-tuning Epoch {epoch+1}/{fine_tune_epochs}")
-            
-            # آموزش
-            train_loss, train_acc, train_f1 = self.train_epoch(
-                train_loader, optimizer, criterion, epoch
-            )
-            
-            # اعتبارسنجی
-            val_loss, val_acc, val_f1, _, _ = self.validate(val_loader, criterion)
-            
-            print(f"Train - Loss: {train_loss:.4f}, Acc: {train_acc:.4f}")
-            print(f"Val   - Loss: {val_loss:.4f}, Acc: {val_acc:.4f}")
+        accuracy = accuracy_score(all_labels, all_preds)
+        precision = precision_score(all_labels, all_preds, average='weighted')
+        recall = recall_score(all_labels, all_preds, average='weighted')
+        f1 = f1_score(all_labels, all_preds, average='weighted')
         
-        # ذخیره مدل fine-tuned شده
-        model_path = Path(self.config.model_save_dir) / "fine_tuned_model.pth"
-        self.classifier.save_model(str(model_path))
+        cm = confusion_matrix(all_labels, all_preds)
+        report = classification_report(all_labels, all_preds, 
+                                      target_names=list(self.config.class_mapping.keys()))
         
-        print(f"\nFine-tuning completed! Model saved to {model_path}")
+        results = {
+            'accuracy': accuracy,
+            'precision': precision,
+            'recall': recall,
+            'f1_score': f1,
+            'confusion_matrix': cm,
+            'classification_report': report,
+            'predictions': all_preds,
+            'labels': all_labels,
+            'probabilities': all_probs
+        }
+        
+        return results

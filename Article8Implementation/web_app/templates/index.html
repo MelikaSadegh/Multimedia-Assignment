@@ -128,6 +128,14 @@
             font-size: 0.9em;
         }
         
+        .academic-badge {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e53);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        
         .loading-spinner {
             display: none;
             width: 50px;
@@ -151,6 +159,14 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
             margin: 20px 0;
         }
+        
+        .footer-info {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -161,11 +177,21 @@
                 <i class="fas fa-user-md me-3"></i>AI Skin Cancer Classifier
             </h1>
             <p class="lead text-muted">
-                Advanced deep learning system for multi-class skin cancer detection
+                Multi-Class Skin Cancer Classification - Research Paper Implementation
             </p>
-            <div class="model-badge d-inline-block">
-                <i class="fas fa-brain me-2"></i>
-                Model: {{ model_info.best_model }} | Accuracy: {{ (model_info.accuracy * 100)|round(2) }}%
+            <div class="d-flex justify-content-center gap-3 flex-wrap">
+                <div class="academic-badge">
+                    <i class="fas fa-graduation-cap me-2"></i>
+                    Multimedia Assignment - Fall 2025
+                </div>
+                <div class="model-badge">
+                    <i class="fas fa-robot me-2"></i>
+                    Student: Melika Sadegh
+                </div>
+                <div class="model-badge">
+                    <i class="fas fa-brain me-2"></i>
+                    Model: {{ model_info.type }} | Accuracy: {{ (model_info.accuracy * 100)|round(2) }}%
+                </div>
             </div>
         </div>
 
@@ -269,11 +295,31 @@
                                 </div>
                             </div>
                             
+                            <!-- Paper & Academic Info -->
+                            <div class="mt-3">
+                                <div class="alert alert-info">
+                                    <h6><i class="fas fa-file-alt me-2"></i>Research Paper</h6>
+                                    <p class="mb-1">
+                                        <strong>Title:</strong> Multi-Class Skin Cancer Classification Using Vision Transformer Networks
+                                        and Convolutional Neural Network-Based Pre-Trained Models
+                                    </p>
+                                    <p class="mb-1">
+                                        <strong>Authors:</strong> Arshed et al. | <strong>Published:</strong> Information 2023
+                                    </p>
+                                    <p class="mb-0">
+                                        <strong>Paper Accuracy:</strong> 92.14% | 
+                                        <strong>Our Implementation:</strong> <span id="paperComparison"></span>
+                                    </p>
+                                </div>
+                            </div>
+                            
                             <!-- Model Info -->
                             <div class="mt-3 text-center">
                                 <small class="text-muted">
                                     <i class="fas fa-robot me-1"></i>
-                                    Powered by {{ model_info.best_model }} | 
+                                    Powered by {{ model_info.type }} | 
+                                    Student: Melika Sadegh |
+                                    Course: Multimedia Fall 2025 |
                                     <span id="timestamp"></span>
                                 </small>
                             </div>
@@ -300,10 +346,10 @@
                             It is not a substitute for professional medical diagnosis. 
                             Always consult a qualified healthcare provider for accurate diagnosis.
                         </div>
-                        <div class="alert alert-info">
-                            <i class="fas fa-heartbeat me-2"></i>
-                            <strong>Note:</strong> Early detection of skin cancer significantly 
-                            improves treatment outcomes. Regular skin self-exams are recommended.
+                        <div class="alert alert-primary">
+                            <i class="fas fa-graduation-cap me-2"></i>
+                            <strong>Academic Project:</strong> This implementation is part of Multimedia Systems course
+                            (Fall 2025) by Melika Sadegh, based on the research paper by Arshed et al.
                         </div>
                     </div>
                 </div>
@@ -312,24 +358,31 @@
         
         <!-- Footer -->
         <footer class="mt-5 pt-4 border-top text-center">
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <h6><i class="fas fa-shield-alt me-2"></i>Privacy</h6>
-                    <small class="text-muted">All uploaded images are deleted after analysis</small>
+            <div class="footer-info">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <h6><i class="fas fa-user-graduate me-2"></i>Student</h6>
+                        <p class="mb-0">Melika Sadegh</p>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <h6><i class="fas fa-book me-2"></i>Course</h6>
+                        <p class="mb-0">Multimedia Systems</p>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <h6><i class="fas fa-calendar me-2"></i>Semester</h6>
+                        <p class="mb-0">Fall 2025</p>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <h6><i class="fas fa-file-alt me-2"></i>Paper</h6>
+                        <p class="mb-0">Arshed et al. (2023)</p>
+                    </div>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <h6><i class="fas fa-cogs me-2"></i>Technology</h6>
-                    <small class="text-muted">Vision Transformer & Deep Learning</small>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <h6><i class="fas fa-hands-helping me-2"></i>Support</h6>
-                    <small class="text-muted">For emergencies, contact medical professionals</small>
-                </div>
+                <p class="mt-3 mb-0">
+                    <i class="fas fa-laptop-code me-1"></i>
+                    Research Paper Implementation | 
+                    <a href="/about" class="text-white text-decoration-underline">About This Project</a>
+                </p>
             </div>
-            <p class="text-muted mt-3">
-                &copy; 2024 Skin Cancer AI Classifier | 
-                <a href="/about" class="text-decoration-none">About This Project</a>
-            </p>
         </footer>
     </div>
 
@@ -443,6 +496,7 @@
             const isCancer = result.is_cancer;
             const mainClass = result.main_class;
             const confidence = result.main_confidence;
+            const paperAccuracy = 92.14; // از مقاله
             
             // Update title
             document.getElementById('resultTitle').innerHTML = 
@@ -451,7 +505,7 @@
                 '<i class="fas fa-check-circle text-success me-2"></i>No Cancer Detected';
             
             // Update class info
-            document.getElementById('className').textContent = mainClass;
+            document.getElementById('className').textContent = mainClass.toUpperCase();
             document.getElementById('classDescription').textContent = result.main_description;
             
             // Update risk badge
@@ -478,6 +532,14 @@
                 (isCancer ? 'alert-danger' : 'alert-success');
             document.getElementById('recommendationText').textContent = result.recommendation;
             
+            // Update paper comparison
+            const diff = Math.abs(confidence - paperAccuracy);
+            const comparisonText = confidence > paperAccuracy ? 
+                `+${(confidence - paperAccuracy).toFixed(2)}% better` :
+                `${(paperAccuracy - confidence).toFixed(2)}% lower`;
+            document.getElementById('paperComparison').textContent = 
+                `${confidence.toFixed(2)}% (${comparisonText})`;
+            
             // Update all predictions
             const allPredictionsDiv = document.getElementById('allPredictions');
             allPredictionsDiv.innerHTML = '';
@@ -492,7 +554,7 @@
                                 pred.risk_level.includes('Medium') ? 'bg-warning' : 'bg-success'} me-2">
                                 #${index + 1}
                             </span>
-                            <strong>${pred.class}</strong>: ${pred.description}
+                            <strong>${pred.class.toUpperCase()}</strong>: ${pred.description}
                             <br>
                             <small class="text-muted">Risk: ${pred.risk_level}</small>
                         </div>

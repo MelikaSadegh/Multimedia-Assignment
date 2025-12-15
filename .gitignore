@@ -186,3 +186,6 @@ training_logs/
 !data/example_images/
 !models/example_model.pth
 !results/example_plots/
+
+
+static/

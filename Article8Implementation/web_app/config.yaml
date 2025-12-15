@@ -49,3 +49,4 @@ web:
   upload_folder: "static/uploads"
   max_file_size: 16MB
   allowed_extensions: [".jpg", ".jpeg", ".png", ".bmp", ".gif"]
+
